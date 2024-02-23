@@ -12,8 +12,7 @@ it is for the <a href=https://github.com/ChendoChap/pOOBs4>PS4 9.00 OOB Exploit<
 you must use the <b>LilyGo T-Dongle-S3</b> with this project and have a fat32 formatted sd card inserted into the dongle.<br>
 
 <a href="https://www.lilygo.cc/products/t-dongle-s3?variant=42455191486645">LilyGo T-Dongle-S3 With LCD</a> &nbsp;&nbsp; <a href="https://www.lilygo.cc/products/t-dongle-s3?variant=42455191519413">LilyGo T-Dongle-S3 Without LCD</a><br>
-<br>
-<img src=https://github.com/stooged/PS4-Dongle/blob/main/images/dongle0.jpg> &nbsp;&nbsp;&nbsp;&nbsp; <img src=https://github.com/stooged/PS4-Dongle/blob/main/images/dongle.jpg><br>
+<img src=https://github.com/stooged/PS4-Dongle/blob/main/images/dongle0.jpg> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <img src=https://github.com/stooged/PS4-Dongle/blob/main/images/dongle.jpg><br>
 <img src=https://github.com/stooged/PS4-Dongle/blob/main/images/dongle1.jpg><br>
 
 <br>
