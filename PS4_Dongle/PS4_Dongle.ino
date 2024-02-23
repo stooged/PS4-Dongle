@@ -49,7 +49,7 @@ int WEB_PORT = 80;
 int USB_WAIT = 10000;
 
 // Displayed firmware version
-String firmwareVer = "1.00";
+#define firmwareVer "1.00"
 
 // ESP sleep after x minutes
 boolean espSleep = false;
@@ -63,7 +63,6 @@ int TIME2SLEEP = 30; // minutes
 #if FANMOD
 #include "fan.h"
 #endif
-#define FILESYS SD_MMC
 DNSServer dnsServer;
 AsyncWebServer server(WEB_PORT);
 boolean hasEnabled = false;
@@ -74,6 +73,8 @@ long bootTime = 0;
 File upFile;
 USBMSC dev;
 #define MOUNT_POINT "/sdcard"
+#define PDESC "PS4-Dongle"
+#define MDESC "T-D-S3"
 sdmmc_card_t *card;
 
 /*
@@ -231,7 +232,7 @@ void handleFwUpdate(AsyncWebServerRequest *request, String filename, size_t inde
 
 void handlePayloads(AsyncWebServerRequest *request)
 {
-  File dir = FILESYS.open("/");
+  File dir = SD_MMC.open("/");
   String output = "<!DOCTYPE html><html><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>ESP Server</title><link rel=\"stylesheet\" href=\"style.css\"><style>body { background-color: #1451AE; color: #ffffff; font-size: 14px; font-weight: bold; margin: 0 0 0 0.0; overflow-y:hidden; text-shadow: 3px 2px DodgerBlue;}</style><script>function setpayload(payload,title,waittime){ sessionStorage.setItem('payload', payload); sessionStorage.setItem('title', title); sessionStorage.setItem('waittime', waittime);  window.open('loader.html', '_self');}</script></head><body><center><h1>9.00 Payloads</h1>";
   int cntr = 0;
   int payloadCount = 0;
@@ -327,7 +328,7 @@ void handleConfig(AsyncWebServerRequest *request)
     }
     int USB_WAIT = request->getParam("usbwait", true)->value().toInt();
     int TIME2SLEEP = request->getParam("sleeptime", true)->value().toInt();
-    File iniFile = FILESYS.open("/config.ini", "w");
+    File iniFile = SD_MMC.open("/config.ini", "w");
     if (iniFile)
     {
       iniFile.print("\r\nAP_SSID=" + AP_SSID + "\r\nAP_PASS=" + AP_PASS + "\r\nWEBSERVER_IP=" + tmpip + "\r\nWEBSERVER_PORT=" + tmpwport + "\r\nSUBNET_MASK=" + tmpsubn + "\r\nWIFI_SSID=" + WIFI_SSID + "\r\nWIFI_PASS=" + WIFI_PASS + "\r\nWIFI_HOST=" + WIFI_HOSTNAME + "\r\nUSEAP=" + tmpua + "\r\nCONWIFI=" + tmpcw + "\r\nUSBWAIT=" + USB_WAIT + "\r\nESPSLEEP=" + tmpslp + "\r\nSLEEPTIME=" + TIME2SLEEP + "\r\n");
@@ -398,7 +399,7 @@ void handleFileUpload(AsyncWebServerRequest *request, String filename, size_t in
       return;
     }
     // HWSerial.printf("Upload Start: %s\n", filename.c_str());
-    upFile = FILESYS.open(filename, "w");
+    upFile = SD_MMC.open(filename, "w");
   }
   if (upFile)
   {
@@ -430,7 +431,7 @@ void handleInfo(AsyncWebServerRequest *request)
   mcuType.toUpperCase();
   String output = "<!DOCTYPE html><html><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>System Information</title><link rel=\"stylesheet\" href=\"style.css\"></head>";
   output += "<hr>###### Software ######<br><br>";
-  output += "Firmware version " + firmwareVer + "<br>";
+  output += "Firmware version " + String(firmwareVer) + "<br>";
   output += "SDK version: " + String(ESP.getSdkVersion()) + "<br><hr>";
   output += "###### Board ######<br><br>";
   output += "MCU: " + mcuType + "<br>";
@@ -445,9 +446,9 @@ void handleInfo(AsyncWebServerRequest *request)
   output += "Flash write mode: " + String((ideMode == FM_QIO? "QIO" : ideMode == FM_QOUT? "QOUT": ideMode == FM_DIO? "DIO": ideMode == FM_DOUT? "DOUT": "UNKNOWN")) + "<br><hr>";
   output += "###### Storage information ######<br><br>";
   output += "Storage Device: SD<br>";
-  output += "Total Size: " + formatBytes(FILESYS.totalBytes()) + "<br>";
-  output += "Used Space: " + formatBytes(FILESYS.usedBytes()) + "<br>";
-  output += "Free Space: " + formatBytes(FILESYS.totalBytes() - FILESYS.usedBytes()) + "<br><hr>";
+  output += "Total Size: " + formatBytes(SD_MMC.totalBytes()) + "<br>";
+  output += "Used Space: " + formatBytes(SD_MMC.usedBytes()) + "<br>";
+  output += "Free Space: " + formatBytes(SD_MMC.totalBytes() - SD_MMC.usedBytes()) + "<br><hr>";
   output += "###### Ram information ######<br><br>";
   output += "Ram size: " + formatBytes(ESP.getHeapSize()) + "<br>";
   output += "Free ram: " + formatBytes(ESP.getFreeHeap()) + "<br>";
@@ -463,7 +464,7 @@ void handleInfo(AsyncWebServerRequest *request)
 #if USECONFIG
 void writeConfig()
 {
-  File iniFile = FILESYS.open("/config.ini", "w");
+  File iniFile = SD_MMC.open("/config.ini", "w");
   if (iniFile)
   {
     String tmpua = "false";
@@ -495,14 +496,14 @@ void setup()
 
   setup_SD();
 
-  FILESYS.setPins(12, 16, 14, 17, 21, 18);
-  if (FILESYS.begin())
+  SD_MMC.setPins(12, 16, 14, 17, 21, 18);
+  if (SD_MMC.begin())
   {
 
 #if USECONFIG
-    if (FILESYS.exists("/config.ini"))
+    if (SD_MMC.exists("/config.ini"))
     {
-      File iniFile = FILESYS.open("/config.ini", "r");
+      File iniFile = SD_MMC.open("/config.ini", "r");
       if (iniFile)
       {
         String iniData;
@@ -619,13 +620,14 @@ void setup()
       writeConfig();
     }
 #endif
-    dev.vendorID("PS4-Hen");
-    dev.productID("PS4-Dongle");
-    dev.productRevision("1.0");
+    efhEnabled = false;
+    dev.vendorID(MDESC);
+    dev.productID(PDESC);
+    dev.productRevision(firmwareVer);
     dev.onRead(onRead);
-    if (FILESYS.exists("/efh.tmp"))
+    if (SD_MMC.exists("/efh.tmp"))
     {
-      FILESYS.remove("/efh.tmp");
+      SD_MMC.remove("/efh.tmp");
       efhEnabled = true;
       dev.mediaPresent(true);
       dev.begin(8192, 512);
@@ -638,6 +640,8 @@ void setup()
       dev.onWrite(onWrite);
       dev.mediaPresent(true);
       dev.begin(card->csd.capacity, card->csd.sector_size);
+      USB.productName(PDESC);
+      USB.manufacturerName(MDESC);
       USB.begin();
     }
   }
@@ -776,7 +780,7 @@ void setup()
     free(fant); });
 #endif
 
-  server.serveStatic("/", FILESYS, "/").setDefaultFile("index.html");
+  server.serveStatic("/", SD_MMC, "/").setDefaultFile("index.html");
 
   server.onNotFound([](AsyncWebServerRequest *request)
                     {
@@ -902,7 +906,7 @@ static int32_t onRead(uint32_t lba, uint32_t offset, void *buffer, uint32_t bufs
 
 void enableUSB()
 {
-  File tmp = FILESYS.open("/efh.tmp", "w");
+  File tmp = SD_MMC.open("/efh.tmp", "w");
   tmp.close();
   dev.end();
   ESP.restart();
