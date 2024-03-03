@@ -1,4 +1,10 @@
-#if defined(CONFIG_IDF_TARGET_ESP32S3)
+#if ARDUINO_USB_CDC_ON_BOOT
+#error "The menu option 'Tools / USB CDC On Boot' must be set to 'Disabled'"
+#elif ARDUINO_USB_DFU_ON_BOOT
+#error "The menu option 'Tools / USB DFU On Boot' must be set to 'Disabled'"
+#elif ARDUINO_USB_MSC_ON_BOOT
+#error "The menu option 'Tools / USB MSC On Boot' must be set to 'Disabled'"
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
 #include <FS.h>
 #include "WiFi.h"
 #include "ESPAsyncWebServer.h"
@@ -72,22 +78,12 @@ int ftemp = 70;
 long bootTime = 0;
 File upFile;
 USBMSC dev;
+//USBCDC USBSerial;
 #define MOUNT_POINT "/sdcard"
 #define PDESC "PS4-Dongle"
 #define MDESC "T-D-S3"
 sdmmc_card_t *card;
 
-/*
-#if ARDUINO_USB_CDC_ON_BOOT
-#define HWSerial Serial0
-#define USBSerial Serial
-#else
-#define HWSerial Serial
-#if defined(CONFIG_IDF_TARGET_ESP32S2) | defined(CONFIG_IDF_TARGET_ESP32S3)
-USBCDC USBSerial;
-#endif
-#endif
-*/
 
 String split(String str, String from, String to)
 {
@@ -784,7 +780,7 @@ void setup()
 
   server.onNotFound([](AsyncWebServerRequest *request)
                     {
-    //HWSerial.println(request->url());
+    //USBSerial.println(request->url());
     String path = request->url();
     if (instr(path, "/update/ps4/")) {
       String Region = split(path, "/update/ps4/list/", "/");
