@@ -991,7 +991,9 @@ void loop()
     if (millis() >= (bootTime + (TIME2SLEEP * 60000)))
     {
       //USBSerial.print("Esp sleep"); 
-      digitalWrite(38, HIGH); 
+      digitalWrite(38, HIGH);
+      gpio_hold_en((gpio_num_t)38);
+      gpio_deep_sleep_hold_en();
       esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_OFF);
       esp_deep_sleep_start();
       return;
