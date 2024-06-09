@@ -21,6 +21,17 @@
 #include "USBMSC.h"
 #include "exfathax.h"
 
+
+#define USETFT false  // use dongle lcd screen
+
+#if USETFT
+#include <TFT_eSPI.h>  // https://github.com/stooged/TFT_eSPI
+TFT_eSPI tft = TFT_eSPI();  
+long tftCnt = 0;
+bool tftOn = true;
+#endif
+
+
                     // use PsFree [ true / false ]
 #define PSFREE true // use the newer psfree webkit exploit.
                     // this is fairly stable but may fail which will require you to try and load the payload again.
@@ -484,11 +495,111 @@ void writeConfig()
 }
 #endif
 
+
+
+
+
+void startAccessPoint()
+{
+  if (startAP)
+  {
+    //USBSerial.println("SSID: " + AP_SSID);
+    //USBSerial.println("Password: " + AP_PASS);
+    //USBSerial.println("");
+    //USBSerial.println("WEB Server IP: " + Server_IP.toString());
+    //USBSerial.println("Subnet: " + Subnet_Mask.toString());
+    //USBSerial.println("WEB Server Port: " + String(WEB_PORT));
+    //USBSerial.println("");
+    WiFi.softAPConfig(Server_IP, Server_IP, Subnet_Mask);
+    WiFi.softAP(AP_SSID.c_str(), AP_PASS.c_str());
+    //USBSerial.println("WIFI AP started");
+    dnsServer.setTTL(30);
+    dnsServer.setErrorReplyCode(DNSReplyCode::ServerFailure);
+    dnsServer.start(53, "*", Server_IP);
+#if USETFT
+    tft.print("AP: ");
+    tft.println(AP_SSID);
+    if (!connectWifi)
+    {
+      tft.print("Host: ");
+      tft.println(WIFI_HOSTNAME);
+    }
+    tft.print("IP: ");
+    tft.println(Server_IP.toString());
+#endif
+    //USBSerial.println("DNS server started");
+    //USBSerial.println("DNS Server IP: " + Server_IP.toString());
+  }
+}
+
+void connectToWIFI()
+{
+  if (connectWifi && WIFI_SSID.length() > 0 && WIFI_PASS.length() > 0)
+  {
+    WiFi.setAutoConnect(true);
+    WiFi.setAutoReconnect(true);
+    WiFi.hostname(WIFI_HOSTNAME);
+    WiFi.begin(WIFI_SSID.c_str(), WIFI_PASS.c_str());
+    //USBSerial.println("WIFI connecting");
+    if (WiFi.waitForConnectResult() != WL_CONNECTED)
+    {
+      //USBSerial.println("Wifi failed to connect");
+#if USETFT
+      tft.setTextColor(TFT_RED, TFT_BLACK);          
+      tft.println("Failed to connect to:");
+      tft.setTextColor(TFT_WHITE, TFT_BLACK);  
+      tft.println(WIFI_SSID);
+#endif 
+    }
+    else
+    {
+      IPAddress LAN_IP = WiFi.localIP();
+      if (LAN_IP)
+      {
+        //USBSerial.println("Wifi Connected");
+        //USBSerial.println("WEB Server LAN IP: " + LAN_IP.toString());
+        //USBSerial.println("WEB Server Port: " + String(WEB_PORT));
+        //USBSerial.println("WEB Server Hostname: " + WIFI_HOSTNAME);
+        String mdnsHost = WIFI_HOSTNAME;
+        mdnsHost.replace(".local", "");
+        MDNS.begin(mdnsHost.c_str());
+#if USETFT        
+        tft.print("Host: ");
+        tft.println(WIFI_HOSTNAME);
+        tft.print("IP: ");
+        tft.println(LAN_IP.toString()); 
+#endif
+        if (!startAP)
+        {
+          dnsServer.setTTL(30);
+          dnsServer.setErrorReplyCode(DNSReplyCode::ServerFailure);
+          dnsServer.start(53, "*", LAN_IP);
+          //USBSerial.println("DNS server started");
+          //USBSerial.println("DNS Server IP: " + LAN_IP.toString());
+        }
+      }
+    }
+  }
+}
+
+
 void setup()
 {
+
   //USBSerial.begin(115200);
   //USBSerial.println("Version: " + firmwareVer);
   //USBSerial.begin();
+
+  pinMode(38, OUTPUT);
+  digitalWrite(38, HIGH); 
+ 
+#if USETFT   
+  tft.init();
+  tft.setRotation(1);
+  tft.fillScreen(TFT_BLACK);
+  tft.pushImage(0, 0, 160, 320, logo);
+  digitalWrite(38, LOW);
+#endif 
 
   setup_SD();
 
@@ -646,59 +757,16 @@ void setup()
     //USBSerial.println("Filesystem failed to mount");
   }
 
-  if (startAP)
-  {
-    //USBSerial.println("SSID: " + AP_SSID);
-    //USBSerial.println("Password: " + AP_PASS);
-    //USBSerial.println("");
-    //USBSerial.println("WEB Server IP: " + Server_IP.toString());
-    //USBSerial.println("Subnet: " + Subnet_Mask.toString());
-    //USBSerial.println("WEB Server Port: " + String(WEB_PORT));
-    //USBSerial.println("");
-    WiFi.softAPConfig(Server_IP, Server_IP, Subnet_Mask);
-    WiFi.softAP(AP_SSID.c_str(), AP_PASS.c_str());
-    //USBSerial.println("WIFI AP started");
-    dnsServer.setTTL(30);
-    dnsServer.setErrorReplyCode(DNSReplyCode::ServerFailure);
-    dnsServer.start(53, "*", Server_IP);
-    //USBSerial.println("DNS server started");
-    //USBSerial.println("DNS Server IP: " + Server_IP.toString());
-  }
+#if USETFT  
+  delay(3000);
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextFont(1); //16 col 5 row
+  tft.setTextColor(TFT_SKYBLUE, TFT_BLACK);   
+  tft.setCursor(0, 0, 2);
+#endif
 
-  if (connectWifi && WIFI_SSID.length() > 0 && WIFI_PASS.length() > 0)
-  {
-    WiFi.setAutoConnect(true);
-    WiFi.setAutoReconnect(true);
-    WiFi.hostname(WIFI_HOSTNAME);
-    WiFi.begin(WIFI_SSID.c_str(), WIFI_PASS.c_str());
-    //USBSerial.println("WIFI connecting");
-    if (WiFi.waitForConnectResult() != WL_CONNECTED)
-    {
-      //USBSerial.println("Wifi failed to connect");
-    }
-    else
-    {
-      IPAddress LAN_IP = WiFi.localIP();
-      if (LAN_IP)
-      {
-        //USBSerial.println("Wifi Connected");
-        //USBSerial.println("WEB Server LAN IP: " + LAN_IP.toString());
-        //USBSerial.println("WEB Server Port: " + String(WEB_PORT));
-        //USBSerial.println("WEB Server Hostname: " + WIFI_HOSTNAME);
-        String mdnsHost = WIFI_HOSTNAME;
-        mdnsHost.replace(".local", "");
-        MDNS.begin(mdnsHost.c_str());
-        if (!startAP)
-        {
-          dnsServer.setTTL(30);
-          dnsServer.setErrorReplyCode(DNSReplyCode::ServerFailure);
-          dnsServer.start(53, "*", LAN_IP);
-          //USBSerial.println("DNS server started");
-          //USBSerial.println("DNS Server IP: " + LAN_IP.toString());
-        }
-      }
-    }
-  }
+startAccessPoint();
+connectToWIFI();
 
   server.on("/connecttest.txt", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send(200, "text/plain", "Microsoft Connect Test"); });
@@ -922,7 +990,8 @@ void loop()
   {
     if (millis() >= (bootTime + (TIME2SLEEP * 60000)))
     {
-      //USBSerial.print("Esp sleep");
+      //USBSerial.print("Esp sleep"); 
+      digitalWrite(38, HIGH); 
       esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_OFF);
       esp_deep_sleep_start();
       return;
@@ -932,6 +1001,21 @@ void loop()
   {
     disableUSB();
   }
+#if USETFT    
+  if (millis() >= (tftCnt + 60000) && tftOn){ 
+    tftCnt = 0;
+    tftOn = false;
+    digitalWrite(38, HIGH);
+    return;
+  }
+  if (digitalRead(0) == LOW){
+    if (tftCnt == 0){
+       tftCnt = millis();
+       digitalWrite(38, LOW);
+       tftOn = true;
+    }
+  }
+#endif
   dnsServer.processNextRequest();
 }
 
