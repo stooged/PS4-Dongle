@@ -590,6 +590,8 @@ void setup()
   //USBSerial.println("Version: " + firmwareVer);
   //USBSerial.begin();
 
+  gpio_hold_dis((gpio_num_t)38);
+  gpio_hold_dis((gpio_num_t)0);
   pinMode(38, OUTPUT);
   digitalWrite(38, HIGH); 
  
@@ -993,8 +995,10 @@ void loop()
       //USBSerial.print("Esp sleep"); 
       digitalWrite(38, HIGH);
       gpio_hold_en((gpio_num_t)38);
+      gpio_hold_en((gpio_num_t)0);
       gpio_deep_sleep_hold_en();
-      esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_OFF);
+      esp_sleep_enable_ext0_wakeup((gpio_num_t)0, LOW);
+      esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_AUTO);
       esp_deep_sleep_start();
       return;
     }
